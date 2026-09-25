@@ -1,5 +1,9 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import OuterRef, Subquery
+
+# 萎凋槽风机档位门槛：最近一次切换达到该档位才允许写入批次实测含水率
+GEAR_THRESHOLD = 3
 
 
 class Garden(models.Model):
@@ -109,3 +113,83 @@ class WitherBatch(models.Model):
 
     def __str__(self):
         return f"{self.trough} @ {self.startedAt:%Y-%m-%d %H:%M}"
+
+
+class FanGearLog(models.Model):
+    """风机档位切换志：记录茶园风机档位何时被切到几档。"""
+
+    GEAR_CHOICES = [(i, f"{i} 档") for i in range(1, 6)]
+
+    garden = models.ForeignKey(
+        Garden,
+        on_delete=models.CASCADE,
+        related_name="gear_logs",
+        verbose_name="茶园",
+    )
+    switchedAt = models.DateTimeField("切换时刻")
+    gear = models.PositiveSmallIntegerField("档位", choices=GEAR_CHOICES)
+    operator = models.CharField("操作人", max_length=80)
+    notes = models.TextField("备注", blank=True, default="")
+
+    class Meta:
+        ordering = ["-switchedAt", "-id"]
+        verbose_name = "风机档位志"
+        verbose_name_plural = "风机档位志"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["garden", "switchedAt"],
+                name="uniq_gear_log_minute_per_garden",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.garden.name} {self.switchedAt:%Y-%m-%d %H:%M} → {self.gear}档"
+
+    def clean(self):
+        super().clean()
+        if self.switchedAt:
+            # 切换时刻精确到分钟：秒与毫秒一律归零
+            self.switchedAt = self.switchedAt.replace(second=0, microsecond=0)
+        if self.garden_id and self.switchedAt:
+            dup = FanGearLog.objects.filter(
+                garden_id=self.garden_id, switchedAt=self.switchedAt
+            )
+            if self.pk:
+                dup = dup.exclude(pk=self.pk)
+            if dup.exists():
+                raise ValidationError(
+                    {
+                        "switchedAt": "同一茶园的切换时刻（精确到分钟）不得重复，"
+                        "该园在该分钟已有一条风机档位切换志。"
+                    }
+                )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+def garden_gear_ready(garden, since=None):
+    """该园是否存在档位达到门槛（≥3）的切换志。
+
+    传入 since（批次开始时间）时，切换时刻须不早于该时刻（按分钟比较）。
+    """
+    qs = garden.gear_logs.filter(gear__gte=GEAR_THRESHOLD)
+    if since is not None:
+        qs = qs.filter(switchedAt__gte=since.replace(second=0, microsecond=0))
+    return qs.exists()
+
+
+def gardens_with_latest_gear():
+    """茶园查询集，注解最近档位（latest_gear）与切换时刻（latest_gear_at）。
+
+    首页「档位已达标园」统计与茶园列表「已达标」筛选共用此查询，
+    保证两处数字一致。
+    """
+    latest = FanGearLog.objects.filter(garden=OuterRef("pk")).order_by(
+        "-switchedAt", "-id"
+    )
+    return Garden.objects.annotate(
+        latest_gear=Subquery(latest.values("gear")[:1]),
+        latest_gear_at=Subquery(latest.values("switchedAt")[:1]),
+    )

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}删除切换志{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>删除风机档位切换志</h1>
+</div>
+<div class="card">
+  <p>确认删除「{{ object }}」这条切换志？删除后该园最近档位可能变化。</p>
+  <form method="post" class="actions">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">确认删除</button>
+    <a class="btn btn-secondary" href="{% url 'gear_list' %}">取消</a>
+  </form>
+</div>
+{% endblock %}

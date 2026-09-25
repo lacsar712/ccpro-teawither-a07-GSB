@@ -4,13 +4,20 @@
 <div class="page-header">
   <h1>茶园</h1>
   <div class="actions">
+    <a class="btn btn-sm {% if not standard_filter %}btn-secondary{% else %}btn{% endif %}"
+       href="{% url 'garden_list' %}">全部</a>
+    <a class="btn btn-sm {% if standard_filter == 'met' %}btn-secondary{% else %}btn{% endif %}"
+       href="{% url 'garden_list' %}?standard=met">档位已达标</a>
+    <a class="btn btn-sm {% if standard_filter == 'unmet' %}btn-secondary{% else %}btn{% endif %}"
+       href="{% url 'garden_list' %}?standard=unmet">档位未达标</a>
     <button class="btn btn-secondary btn-sm"
-            hx-get="{% url 'garden_list' %}"
+            hx-get="{% url 'garden_list' %}{% if standard_filter %}?standard={{ standard_filter }}{% endif %}"
             hx-target="#garden-table"
             hx-swap="innerHTML">刷新列表</button>
     <a class="btn" href="{% url 'garden_create' %}">新建茶园</a>
   </div>
 </div>
+<p class="muted">档位达标口径：该园最近一条风机档位切换志档位 ≥ {{ gear_threshold }}。</p>
 <div class="card" id="garden-table">
   {% include "gardens/_table.html" %}
 </div>

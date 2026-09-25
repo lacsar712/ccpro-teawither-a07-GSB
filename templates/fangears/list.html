@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}风机档位{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>风机档位切换志</h1>
+  <div class="actions">
+    <button class="btn btn-secondary btn-sm"
+            hx-get="{% url 'gear_list' %}"
+            hx-target="#gear-table"
+            hx-swap="innerHTML">刷新列表</button>
+    <a class="btn" href="{% url 'gear_create' %}">记录切换</a>
+  </div>
+</div>
+<p class="muted">萎凋中/可下槽槽位保存批次实测含水率前，该园须存在档位 ≥ 3 且切换时刻不早于批次开始的切换志；装叶中槽位不受此限。</p>
+<div class="card" id="gear-table">
+  {% include "fangears/_table.html" %}
+</div>
+{% endblock %}

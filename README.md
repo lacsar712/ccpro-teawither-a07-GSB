@@ -53,8 +53,13 @@ python manage.py runserver 0.0.0.0:4100
 1. **Garden（茶园）**：`name`、`altitudeBand`、`notes`
 2. **Trough（萎凋槽）**：归属茶园、`troughCode`、`cultivar`、`loadKg`、状态 `loading|withering|ready`；同一茶园内槽位编号唯一
 3. **WitherBatch（萎凋批次）**：归属槽位、`startedAt`、`targetMoisture`、`actualMoisture`（可空）、`rollGrade`
+4. **FanGearLog（风机档位切换志）**：归属茶园、`switchedAt`（切换时刻，精确到分钟）、`gear`（档位整数 1–5）、`operator`（操作人）、`notes`（备注可空）；同一茶园切换时刻（精确到分钟）不得重复
 
-**业务规则**：将槽位状态设为 `ready`（可下槽）时，若最新批次的 `actualMoisture` 为空或大于 40，抛出中文 `ValidationError`。
+**业务规则**：
+
+- 将槽位状态设为 `ready`（可下槽）时，若最新批次的 `actualMoisture` 为空或大于 40，抛出中文 `ValidationError`。
+- **风机档位门槛**：萎凋中（`withering`）/可下槽（`ready`）槽位上的批次要保存实测含水率时，该园须存在档位 **≥ 3** 且切换时刻**不早于该批次开始时间**的风机档位切换志，否则表单拒绝并给出中文说明；装叶中（`loading`）槽位上的批次不受此限。
+- 首页「档位已达标园」= 最近一条切换志档位 ≥ 3 的茶园数，与茶园列表「档位已达标」筛选（`/gardens/?standard=met`）的行数同口径、必相等。
 
 ## 种子数据
 
@@ -63,6 +68,8 @@ python manage.py seed_data
 ```
 
 幂等：已有茶园则只保证账号存在。亦可在环境变量 `TEAWITHER_AUTO_SEED=1` 时于 `post_migrate` 自动播种。
+
+种子含风机档位切换志：云雾岭一号园最近 4 档（达标），竹影台二号园最近 2 档（低档、未达标，用于演示实测含水率被档位门槛拦截）。
 
 ## 目录结构
 

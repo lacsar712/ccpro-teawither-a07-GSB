@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import Garden, Trough, WitherBatch
+from .models import FanGearLog, Garden, Trough, WitherBatch
 
 
 def ensure_seed_data():
@@ -92,3 +92,33 @@ def ensure_seed_data():
     )
     t4.status = Trough.STATUS_READY
     t4.save()
+
+    # 风机档位切换志：云雾岭一号园已升至 4 档（达标，且不早于 A-01 批次开始），
+    # 竹影台二号园保持 2 档（低档，未达标，其萎凋中/可下槽槽位写实测会被拦截）。
+    FanGearLog.objects.create(
+        garden=g1,
+        switchedAt=(now - timezone.timedelta(hours=26)).replace(
+            second=0, microsecond=0
+        ),
+        gear=2,
+        operator="witherer",
+        notes="夜间低档试运行",
+    )
+    FanGearLog.objects.create(
+        garden=g1,
+        switchedAt=(now - timezone.timedelta(hours=17)).replace(
+            second=0, microsecond=0
+        ),
+        gear=4,
+        operator="admin",
+        notes="萎凋高峰前升档",
+    )
+    FanGearLog.objects.create(
+        garden=g2,
+        switchedAt=(now - timezone.timedelta(hours=1)).replace(
+            second=0, microsecond=0
+        ),
+        gear=2,
+        operator="witherer",
+        notes="电力紧张，暂维持低档",
+    )

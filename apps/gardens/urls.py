@@ -40,4 +40,16 @@ urlpatterns = [
         views.BatchDeleteView.as_view(),
         name="batch_delete",
     ),
+    path("gears/", views.GearLogListView.as_view(), name="gear_list"),
+    path("gears/new/", views.GearLogCreateView.as_view(), name="gear_create"),
+    path(
+        "gears/<int:pk>/edit/",
+        views.GearLogUpdateView.as_view(),
+        name="gear_edit",
+    ),
+    path(
+        "gears/<int:pk>/delete/",
+        views.GearLogDeleteView.as_view(),
+        name="gear_delete",
+    ),
 ]

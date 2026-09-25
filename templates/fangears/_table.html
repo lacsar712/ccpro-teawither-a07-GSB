@@ -1,0 +1,33 @@
+{% if logs %}
+<table class="data">
+  <thead>
+    <tr>
+      <th>茶园</th>
+      <th>切换时刻</th>
+      <th>档位</th>
+      <th>操作人</th>
+      <th>备注</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.garden.name }}</td>
+      <td>{{ log.switchedAt|date:"Y-m-d H:i" }}</td>
+      <td>
+        <span class="badge {% if log.gear >= 3 %}badge-withering{% else %}badge-loading{% endif %}">{{ log.gear }} 档</span>
+      </td>
+      <td>{{ log.operator }}</td>
+      <td>{{ log.notes|default:"—" }}</td>
+      <td class="actions">
+        <a class="btn btn-sm btn-secondary" href="{% url 'gear_edit' log.pk %}">编辑</a>
+        <a class="btn btn-sm btn-danger" href="{% url 'gear_delete' log.pk %}">删除</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">暂无风机档位切换志，请先记录切换。</p>
+{% endif %}

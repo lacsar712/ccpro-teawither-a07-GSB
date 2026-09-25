@@ -4,6 +4,7 @@
     <tr>
       <th>名称</th>
       <th>海拔带</th>
+      <th>最近档位</th>
       <th>备注</th>
       <th>操作</th>
     </tr>
@@ -13,6 +14,14 @@
     <tr>
       <td>{{ g.name }}</td>
       <td>{{ g.altitudeBand }}</td>
+      <td>
+        {% if g.latest_gear %}
+          <span class="badge {% if g.latest_gear >= 3 %}badge-withering{% else %}badge-loading{% endif %}">{{ g.latest_gear }} 档</span>
+          <span class="muted">{{ g.latest_gear_at|date:"m-d H:i" }}</span>
+        {% else %}
+          <span class="muted">暂无切换志</span>
+        {% endif %}
+      </td>
       <td>{{ g.notes|default:"—" }}</td>
       <td class="actions">
         <a class="btn btn-sm btn-secondary" href="{% url 'garden_edit' g.pk %}">编辑</a>
