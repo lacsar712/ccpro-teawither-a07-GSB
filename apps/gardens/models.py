@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import OuterRef, Subquery
 
 
 class Garden(models.Model):
@@ -14,6 +16,23 @@ class Garden(models.Model):
 
     def __str__(self):
         return self.name
+
+    def latest_gear_log(self):
+        return self.fan_gear_logs.order_by("-switchedAt", "-id").first()
+
+    def gear_qualified(self):
+        """园级达标：最近一次风机档位切换志的档位达到约定档位（含）。"""
+        log = self.latest_gear_log()
+        return log is not None and log.gear >= FanGearLog.GEAR_THRESHOLD
+
+    def gear_covers_batch(self, started_at):
+        """批次门槛：最近一次切换达到约定档位，且切换时刻不早于批次开始。"""
+        log = self.latest_gear_log()
+        return (
+            log is not None
+            and log.gear >= FanGearLog.GEAR_THRESHOLD
+            and log.switchedAt >= started_at
+        )
 
 
 class Trough(models.Model):
@@ -109,3 +128,63 @@ class WitherBatch(models.Model):
 
     def __str__(self):
         return f"{self.trough} @ {self.startedAt:%Y-%m-%d %H:%M}"
+
+
+class FanGearLog(models.Model):
+    """风机档位切换志：同一茶园切换时刻精确到分钟不得重复。"""
+
+    GEAR_MIN = 1
+    GEAR_MAX = 5
+    GEAR_THRESHOLD = 3
+    GEAR_CHOICES = [(i, f"{i} 档") for i in range(GEAR_MIN, GEAR_MAX + 1)]
+
+    garden = models.ForeignKey(
+        Garden,
+        on_delete=models.CASCADE,
+        related_name="fan_gear_logs",
+        verbose_name="所属茶园",
+    )
+    switchedAt = models.DateTimeField("切换时刻")
+    gear = models.PositiveSmallIntegerField(
+        "档位",
+        choices=GEAR_CHOICES,
+        validators=[
+            MinValueValidator(GEAR_MIN),
+            MaxValueValidator(GEAR_MAX),
+        ],
+    )
+    operator = models.CharField("操作人", max_length=80)
+    notes = models.TextField("备注", blank=True, default="")
+
+    class Meta:
+        ordering = ["-switchedAt", "-id"]
+        verbose_name = "风机档位切换志"
+        verbose_name_plural = "风机档位切换志"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["garden", "switchedAt"],
+                name="uniq_fangeolog_minute_per_garden",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.garden.name} 风机 {self.gear} 档 @ {self.switchedAt:%Y-%m-%d %H:%M}"
+
+    def clean(self):
+        super().clean()
+        # 切换时刻精确到分钟：秒以下归零，配合唯一约束保证同园同分钟不重复
+        if self.switchedAt:
+            self.switchedAt = self.switchedAt.replace(second=0, microsecond=0)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+def latest_gear_subquery():
+    """每园最近一条切换志的档位（按切换时刻、id 排序），可用于 annotate。"""
+    return Subquery(
+        FanGearLog.objects.filter(garden=OuterRef("pk"))
+        .order_by("-switchedAt", "-id")
+        .values("gear")[:1]
+    )

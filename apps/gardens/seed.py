@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import Garden, Trough, WitherBatch
+from .models import FanGearLog, Garden, Trough, WitherBatch
 
 
 def ensure_seed_data():
@@ -92,3 +92,14 @@ def ensure_seed_data():
     )
     t4.status = Trough.STATUS_READY
     t4.save()
+
+    # 一号园当前风机仅 2 档（低档，未达约定 3 档）：
+    # 其萎凋中槽位 A-01 的批次实测含水率将被档位门槛拒绝
+    admin_user = User.objects.get(username="admin")
+    FanGearLog.objects.create(
+        garden=g1,
+        switchedAt=now - timezone.timedelta(hours=1),
+        gear=2,
+        operator=admin_user.username,
+        notes="种子数据：低档示范，未达约定档位",
+    )

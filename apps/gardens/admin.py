@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Garden, Trough, WitherBatch
+from .models import FanGearLog, Garden, Trough, WitherBatch
 
 
 @admin.register(Garden)
@@ -27,3 +27,11 @@ class WitherBatchAdmin(admin.ModelAdmin):
         "rollGrade",
     )
     list_filter = ("rollGrade",)
+
+
+@admin.register(FanGearLog)
+class FanGearLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "garden", "switchedAt", "gear", "operator")
+    list_filter = ("garden", "gear")
+    search_fields = ("operator", "notes")
+    date_hierarchy = "switchedAt"

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}风机档位{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>风机档位切换志</h1>
+  <div class="actions">
+    <button class="btn btn-secondary btn-sm"
+            hx-get="{% url 'fangeolog_list' %}"
+            hx-target="#fangeolog-table"
+            hx-swap="innerHTML">刷新列表</button>
+    <a class="btn" href="{% url 'fangeolog_create' %}">登记档位切换</a>
+  </div>
+</div>
+<div class="card" id="fangeolog-table">
+  {% include "fangeologs/_table.html" %}
+</div>
+<p class="muted" style="margin-top:1rem">
+  档位门槛：萎凋中 / 可下槽槽位的批次要写入实测含水率时，所属茶园须有一条最近切换档位 ≥ {{ gear_threshold }} 档、
+  且切换时刻不早于该批次开始时间的记录；装叶中槽位不受此限。同一茶园切换时刻精确到分钟不可重复。
+</p>
+{% endblock %}

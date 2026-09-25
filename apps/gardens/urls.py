@@ -40,4 +40,24 @@ urlpatterns = [
         views.BatchDeleteView.as_view(),
         name="batch_delete",
     ),
+    path(
+        "fan-gear-logs/",
+        views.FanGearLogListView.as_view(),
+        name="fangeolog_list",
+    ),
+    path(
+        "fan-gear-logs/new/",
+        views.FanGearLogCreateView.as_view(),
+        name="fangeolog_create",
+    ),
+    path(
+        "fan-gear-logs/<int:pk>/edit/",
+        views.FanGearLogUpdateView.as_view(),
+        name="fangeolog_edit",
+    ),
+    path(
+        "fan-gear-logs/<int:pk>/delete/",
+        views.FanGearLogDeleteView.as_view(),
+        name="fangeolog_delete",
+    ),
 ]

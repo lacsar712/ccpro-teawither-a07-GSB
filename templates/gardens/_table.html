@@ -4,6 +4,7 @@
     <tr>
       <th>名称</th>
       <th>海拔带</th>
+      <th>最近档位</th>
       <th>备注</th>
       <th>操作</th>
     </tr>
@@ -13,6 +14,17 @@
     <tr>
       <td>{{ g.name }}</td>
       <td>{{ g.altitudeBand }}</td>
+      <td>
+        {% if g.latest_gear != None %}
+          {% if g.latest_gear >= gear_threshold %}
+          <span class="badge badge-ready">{{ g.latest_gear }} 档 · 达标</span>
+          {% else %}
+          <span class="badge badge-loading">{{ g.latest_gear }} 档 · 低档</span>
+          {% endif %}
+        {% else %}
+          <span class="muted">无记录</span>
+        {% endif %}
+      </td>
       <td>{{ g.notes|default:"—" }}</td>
       <td class="actions">
         <a class="btn btn-sm btn-secondary" href="{% url 'garden_edit' g.pk %}">编辑</a>
@@ -23,5 +35,5 @@
   </tbody>
 </table>
 {% else %}
-<p class="empty">暂无茶园，请先新建。</p>
+<p class="empty">{% if qualified_only %}暂无档位达标茶园（最近一次切换档位 ≥ {{ gear_threshold }} 档）。{% else %}暂无茶园，请先新建。{% endif %}</p>
 {% endif %}

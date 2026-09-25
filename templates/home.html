@@ -6,11 +6,17 @@
 </div>
 <div class="stats">
   <div class="stat"><div class="num">{{ garden_count }}</div><div class="label">茶园</div></div>
+  <div class="stat"><div class="num">{{ qualified_garden_count }}</div><div class="label">档位已达标园数</div></div>
   <div class="stat"><div class="num">{{ trough_count }}</div><div class="label">萎凋槽</div></div>
   <div class="stat"><div class="num">{{ batch_count }}</div><div class="label">萎凋批次</div></div>
   <div class="stat"><div class="num">{{ loading_count }}</div><div class="label">装叶中</div></div>
   <div class="stat"><div class="num">{{ withering_count }}</div><div class="label">萎凋中</div></div>
   <div class="stat"><div class="num">{{ ready_count }}</div><div class="label">可下槽</div></div>
 </div>
-<p class="muted" style="margin-top:1.25rem">规则提示：槽位设为「可下槽」时，最新批次实测含水率须已填写且不超过 40%。</p>
+<p class="muted" style="margin-top:1.25rem">
+  规则提示：① 槽位设为「可下槽」时，最新批次实测含水率须已填写且不超过 40%。
+  ② 风机档位门槛——萎凋中 / 可下槽槽位的批次要保存实测含水率时，所属茶园最近一次风机档位切换志的档位须 ≥ {{ gear_threshold }} 档，
+  且切换时刻不早于该批次开始时间；装叶中槽位不受此限。
+  「<a href="{% url 'garden_list' %}?qualified=1">档位已达标园数</a>」与茶园列表「只看达标」筛选行数一致（{{ qualified_garden_count }}）。
+</p>
 {% endblock %}

@@ -12,16 +12,33 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .forms import GardenForm, TroughForm, WitherBatchForm
-from .models import Garden, Trough, WitherBatch
+from .forms import FanGearLogForm, GardenForm, TroughForm, WitherBatchForm
+from .models import (
+    FanGearLog,
+    Garden,
+    Trough,
+    WitherBatch,
+    latest_gear_subquery,
+)
 
 
 def _wants_htmx(request):
     return request.headers.get("HX-Request") == "true"
 
 
+def _qualified_gardens_queryset():
+    """最近一次风机档位切换志档位达到约定档位（≥3）的茶园。"""
+    return (
+        Garden.objects.annotate(latest_gear=latest_gear_subquery())
+        .filter(latest_gear__gte=FanGearLog.GEAR_THRESHOLD)
+    )
+
+
 @login_required
 def home(request):
+    qualified_garden_ids = list(
+        _qualified_gardens_queryset().values_list("pk", flat=True)
+    )
     context = {
         "garden_count": Garden.objects.count(),
         "trough_count": Trough.objects.count(),
@@ -33,6 +50,10 @@ def home(request):
         "loading_count": Trough.objects.filter(
             status=Trough.STATUS_LOADING
         ).count(),
+        # 档位已达标园数：与茶园列表「只看达标」筛选行数同一谓词
+        "qualified_garden_count": len(qualified_garden_ids),
+        "qualified_garden_ids": set(qualified_garden_ids),
+        "gear_threshold": FanGearLog.GEAR_THRESHOLD,
     }
     return render(request, "home.html", context)
 
@@ -45,12 +66,29 @@ class GardenListView(LoginRequiredMixin, ListView):
     template_name = "gardens/list.html"
     context_object_name = "gardens"
 
+    def get_queryset(self):
+        qs = Garden.objects.annotate(latest_gear=latest_gear_subquery())
+        if self.request.GET.get("qualified") == "1":
+            qs = qs.filter(latest_gear__gte=FanGearLog.GEAR_THRESHOLD)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["gear_threshold"] = FanGearLog.GEAR_THRESHOLD
+        context["qualified_only"] = self.request.GET.get("qualified") == "1"
+        # 总数始终等于首页「档位已达标园数」（同一查询谓词）
+        context["qualified_garden_count"] = (
+            _qualified_gardens_queryset().count()
+        )
+        return context
+
     def get(self, request, *args, **kwargs):
         self.object_list = self.get_queryset()
         if _wants_htmx(request):
+            context = self.get_context_data()
             html = render_to_string(
                 "gardens/_table.html",
-                {"gardens": self.object_list},
+                context,
                 request=request,
             )
             return HttpResponse(html)
@@ -199,4 +237,70 @@ class BatchDeleteView(LoginRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         messages.success(self.request, "萎凋批次已删除")
+        return super().form_valid(form)
+
+
+# ---- FanGearLog（风机档位切换志） ----
+
+
+class FanGearLogListView(LoginRequiredMixin, ListView):
+    model = FanGearLog
+    template_name = "fangeologs/list.html"
+    context_object_name = "logs"
+
+    def get_queryset(self):
+        return FanGearLog.objects.select_related("garden").all()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["gear_threshold"] = FanGearLog.GEAR_THRESHOLD
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+        if _wants_htmx(request):
+            context = self.get_context_data()
+            html = render_to_string(
+                "fangeologs/_table.html",
+                context,
+                request=request,
+            )
+            return HttpResponse(html)
+        return super().get(request, *args, **kwargs)
+
+
+class FanGearLogCreateView(LoginRequiredMixin, CreateView):
+    model = FanGearLog
+    form_class = FanGearLogForm
+    template_name = "fangeologs/form.html"
+    success_url = reverse_lazy("fangeolog_list")
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial["operator"] = self.request.user.get_username()
+        return initial
+
+    def form_valid(self, form):
+        messages.success(self.request, "风机档位切换志已登记")
+        return super().form_valid(form)
+
+
+class FanGearLogUpdateView(LoginRequiredMixin, UpdateView):
+    model = FanGearLog
+    form_class = FanGearLogForm
+    template_name = "fangeologs/form.html"
+    success_url = reverse_lazy("fangeolog_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "风机档位切换志已更新")
+        return super().form_valid(form)
+
+
+class FanGearLogDeleteView(LoginRequiredMixin, DeleteView):
+    model = FanGearLog
+    template_name = "fangeologs/confirm_delete.html"
+    success_url = reverse_lazy("fangeolog_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "风机档位切换志已删除")
         return super().form_valid(form)
